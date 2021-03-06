@@ -1,7 +1,8 @@
 #!/bin/sh
 
 # Generate a keypair for Octavia Amphora (needed by TripleO)
-ssh-keygen -b 2048 -t rsa -f {{ stack_home }}/octavia -q -N ""
+rm -f {{ stack_home }}/octavia
+ssh-keygen -b 2048 -t rsa -q -N "" -f {{ stack_home }}/octavia
 
 sudo openstack tripleo deploy \
     --templates \

@@ -19,6 +19,8 @@
       - python3-tripleoclient
     become: true
     become_user: root
+    tags:
+      - install
 
   - name: Install the Octavia Amphora Images
     yum:
@@ -26,7 +28,8 @@
       - octavia-amphora-image-x86_64
     become: true
     become_user: root
-
+    tags:
+      - install
   # The Amphora image is broken for OSP17, see:
   # https://review.rdoproject.org/r/32023
   # Until then this is fine (tested) to use the latest
@@ -35,12 +38,14 @@
     get_url:
       url: https://images.rdoproject.org/octavia/master/amphora-x64-haproxy-centos.qcow2
       dest: "{{ ansible_env.HOME }}/amphora.qcow2"
-
+    tags:
+      - file_downloads
   - name: Create standalone_parameters.yaml
     template:
       src: standalone_parameters.yaml.j2
       dest: "{{ ansible_env.HOME }}/standalone_parameters.yaml"
-
+    tags:
+      - file_creation
   - name: Create dev-install_net_config.yaml
     template:
       src: dev-install_net_config.yaml.j2
@@ -86,11 +91,15 @@
     command: systemctl reset-failed
     become: true
     become_user: root
+    tags:
+      - install
 
   - name: Execute tripleo deploy
-    command: systemd-run --unit=tripleo-deploy --uid=stack --gid=wheel -- {{ tripleo_deploy_path }}
+    command: systemd-run --unit=tripleo-deploy --uid=stack --gid=wheel -- {{ tripleo_deploy_path }} 2>> {{ tripleo_deploy_logs }}
     become: true
     become_user: root
+    tags:
+      - install
 
   - name: Wait for the deploy to complete
     command: systemctl show -p SubState --value tripleo-deploy
@@ -98,6 +107,8 @@
     until: tripleo_deploy_state is not failed and tripleo_deploy_state.stdout != "running"
     retries: 120 # 2 hours
     delay: 60
+    tags:
+      - install
 
   - name: Cleanup and exit on failure
     block:
@@ -109,3 +120,7 @@
     - fail:
         msg: TripleO deploy failed. See {{ tripleo_deploy_logs }} for details.
     when: tripleo_deploy_state.stdout == "failed"
+
+    tags:
+      - cleanup
+      - install
